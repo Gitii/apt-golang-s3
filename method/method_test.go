@@ -53,6 +53,12 @@ Config-Item: Aptitude::Get-Root-Command=sudo:/usr/bin/sudo
 Config-Item: Unattended-Upgrade::Allowed-Origins::=${distro_id}:${distro_codename}-security
 
 `
+
+	// The trailing blank line is intentional.
+	endpointConfigMsg = `601 Configuration
+Config-Item: Acquire::s3::endpoint=https://minio.example.com
+
+`
 )
 
 func TestCapabilities(t *testing.T) {
@@ -102,6 +108,25 @@ func TestSettingRegion(t *testing.T) {
 	expected := "us-east-2"
 	if method.region != expected {
 		t.Errorf("method.region = %s; expected %s", method.region, expected)
+	}
+}
+
+func TestSettingEndpoint(t *testing.T) {
+	reader := strings.NewReader(endpointConfigMsg)
+	method := New(logger(t))
+	go method.readInput(reader)
+
+	for {
+		bytes := <-method.msgChan
+		method.handleBytes(bytes)
+		if reader.Len() == 0 {
+			break
+		}
+	}
+
+	expected := "https://minio.example.com"
+	if method.endpoint != expected {
+		t.Errorf("method.endpoint = %s; expected %s", method.endpoint, expected)
 	}
 }
 

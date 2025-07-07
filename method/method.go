@@ -101,8 +101,9 @@ const (
 )
 
 const (
-	configItemAcquireS3Region = "Acquire::s3::region"
-	configItemAcquireS3Role   = "Acquire::s3::role"
+	configItemAcquireS3Region   = "Acquire::s3::region"
+	configItemAcquireS3Role     = "Acquire::s3::role"
+	configItemAcquireS3Endpoint = "Acquire::s3::endpoint"
 )
 
 const (
@@ -120,11 +121,11 @@ var (
 // A Method implements the logic to process incoming apt messages and respond
 // accordingly.
 type Method struct {
-	region, roleARN string
-	msgChan         chan []byte
-	configured      bool
-	wg              *sync.WaitGroup
-	stdout          *log.Logger
+	region, roleARN, endpoint string
+	msgChan                   chan []byte
+	configured                bool
+	wg                        *sync.WaitGroup
+	stdout                    *log.Logger
 }
 
 // New returns a new Method configured to read from os.Stdin and write to
@@ -134,6 +135,7 @@ func New(logger *log.Logger) *Method {
 	waitGroup.Add(1)
 	return &Method{
 		region:     endpoints.UsEast1RegionID,
+		endpoint:   "",
 		msgChan:    make(chan []byte),
 		configured: false,
 		wg:         &waitGroup,
@@ -312,9 +314,18 @@ func (method *Method) uriAcquire(msg *message.Message) {
 		method.handleError(errAcqMsgMissingRequiredFieldURI)
 	}
 
-	s3URL, err := s3EndpointURL(method.region)
-	if err != nil {
-		method.handleError(fmt.Errorf("resolving S3 endpoint for region %s: %w", method.region, err))
+	var s3URL *url.URL
+	var err error
+	if method.endpoint != "" {
+		s3URL, err = url.Parse(method.endpoint)
+		if err != nil {
+			method.handleError(fmt.Errorf("parsing S3 endpoint %s: %w", method.endpoint, err))
+		}
+	} else {
+		s3URL, err = s3EndpointURL(method.region)
+		if err != nil {
+			method.handleError(fmt.Errorf("resolving S3 endpoint for region %s: %w", method.region, err))
+		}
 	}
 
 	objLoc, err := newLocation(uri, s3URL.Hostname())
@@ -371,6 +382,9 @@ func (method *Method) s3Client(user *url.Userinfo) s3iface.S3API {
 	config := &aws.Config{
 		Region: aws.String(method.region),
 	}
+	if method.endpoint != "" {
+		config.Endpoint = aws.String(method.endpoint)
+	}
 	sess, err := session.NewSession(config)
 	if err != nil {
 		method.handleError(fmt.Errorf("creating AWS session: %w", err))
@@ -403,6 +417,8 @@ func (method *Method) configure(msg *message.Message) {
 			method.region = config[1]
 		case configItemAcquireS3Role:
 			method.roleARN = config[1]
+		case configItemAcquireS3Endpoint:
+			method.endpoint = config[1]
 		}
 	}
 	method.configured = true

@@ -102,6 +102,13 @@ adding an option in your apt configuration, e.g.
 echo "Acquire::s3::region us-east-1;" > /etc/apt/apt.conf.d/s3
 ```
 
+You may also override the endpoint used for S3 requests. This is useful when
+connecting to S3-compatible services.
+
+```plain
+echo "Acquire::s3::endpoint https://minio.example.com;" > /etc/apt/apt.conf.d/s3
+```
+
 Alternatively, you may specify an IAM role to assume before connecting to S3.
 The role will be assumed using the default credential chain; this option is
 mutually exclusive with static credentials in the S3 URL.
