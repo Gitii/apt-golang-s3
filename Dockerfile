@@ -21,6 +21,6 @@ WORKDIR $BUILD_DIR
 
 RUN apt-get update
 RUN apt-get install ruby-dev -y
-RUN gem install dotenv -v 2.8.1 && gem install fpm --no-ri --no-rdoc
+RUN gem install fpm --no-ri --no-rdoc
 
 COPY . $BUILD_DIR/
