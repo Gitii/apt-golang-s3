@@ -19,6 +19,28 @@ set -u # Exit on undefined variables
 
 PACKAGE_NAME=apt-golang-s3
 VERSION=${1:-1}
+ARCH=${2:-amd64}
+
+# Set Go cross-compilation environment variables if not already set
+export GOOS=${GOOS:-linux}
+export GOARCH=${GOARCH:-$ARCH}
+export CGO_ENABLED=${CGO_ENABLED:-0}
+
+# Convert architecture names for fpm compatibility
+case $ARCH in
+  amd64)
+    FPM_ARCH=amd64
+    ;;
+  arm64)
+    FPM_ARCH=arm64
+    ;;
+  arm)
+    FPM_ARCH=armhf
+    ;;
+  *)
+    FPM_ARCH=$ARCH
+    ;;
+esac
 
 go get
 
@@ -36,4 +58,5 @@ fpm -s dir \
   --replaces apt-transport-s3 \
   --url https://github.com/google/apt-golang-s3 \
   --vendor "Google Fabric" \
+  --architecture $FPM_ARCH \
   ./$PACKAGE_NAME=/usr/lib/apt/methods/s3 ${@:3}
