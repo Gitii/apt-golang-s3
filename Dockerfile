@@ -14,7 +14,16 @@
 
 FROM golang:1.24
 
-ENV BUILD_DIR /app
+# Build arguments for cross-compilation support
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
+ENV BUILD_DIR=/app
+
+# Set Go cross-compilation environment variables
+ENV GOOS=$TARGETOS
+ENV GOARCH=$TARGETARCH
+ENV CGO_ENABLED=0
 
 RUN mkdir -p $BUILD_DIR
 WORKDIR $BUILD_DIR

@@ -74,6 +74,112 @@ $ ls
 apt-golang-s3  apt-golang-s3_1_amd64.deb  build-deb.sh  Dockerfile  go.mod  go.sum  main.go  method  README.md
 ```
 
+## Cross-compilation for Different Architectures
+
+This project supports cross-compilation for different architectures to enable deployment on various platforms, including ARM-based devices like Raspberry Pi.
+
+### Supported Architectures
+
+- **amd64**: Intel/AMD 64-bit (default)
+- **arm64**: ARM 64-bit (e.g., Raspberry Pi 4, Apple M1)
+- **armhf**: ARM 32-bit (e.g., older Raspberry Pi models)
+
+### Method 1: Using Docker with Build Arguments
+
+Build for ARM64 (Raspberry Pi 4 and newer):
+```bash
+docker build --build-arg TARGETARCH=arm64 -t apt-golang-s3-arm64 .
+docker run -it --rm -v $(pwd):/app apt-golang-s3-arm64 /app/build-deb.sh 1 arm64
+```
+
+Build for ARMHF (older Raspberry Pi models):
+```bash
+docker build --build-arg TARGETARCH=arm -t apt-golang-s3-armhf .
+docker run -it --rm -v $(pwd):/app apt-golang-s3-armhf /app/build-deb.sh 1 arm
+```
+
+Build for AMD64 (default):
+```bash
+docker build -t apt-golang-s3 .
+docker run -it --rm -v $(pwd):/app apt-golang-s3 /app/build-deb.sh
+```
+
+### Method 2: Using Docker Buildx (Multi-platform)
+
+For building multiple architectures simultaneously:
+```bash
+# Enable buildx
+docker buildx create --use
+
+# Build for multiple platforms
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t apt-golang-s3 .
+
+# Build specific architecture
+docker buildx build --platform linux/arm64 -t apt-golang-s3-arm64 .
+```
+
+### Method 3: Direct Go Cross-compilation
+
+For direct compilation without Docker:
+
+ARM64 (Raspberry Pi 4+):
+```bash
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags '-s -w' -o apt-golang-s3 main.go
+```
+
+ARMHF (older Raspberry Pi):
+```bash
+GOOS=linux GOARCH=arm CGO_ENABLED=0 go build -ldflags '-s -w' -o apt-golang-s3 main.go
+```
+
+AMD64 (default):
+```bash
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-s -w' -o apt-golang-s3 main.go
+```
+
+### Method 4: Using the Enhanced build-deb.sh Script
+
+The `build-deb.sh` script now supports an architecture parameter:
+
+```bash
+# Build for ARM64
+./build-deb.sh 1.0.0 arm64
+
+# Build for ARMHF
+./build-deb.sh 1.0.0 arm
+
+# Build for AMD64 (default)
+./build-deb.sh 1.0.0
+```
+
+The script will automatically set the correct Go cross-compilation environment variables and package architecture.
+
+### Architecture Verification
+
+To verify the architecture of a compiled binary:
+```bash
+file apt-golang-s3
+```
+
+Expected outputs:
+- **AMD64**: `ELF 64-bit LSB executable, x86-64`
+- **ARM64**: `ELF 64-bit LSB executable, ARM aarch64`
+- **ARMHF**: `ELF 32-bit LSB executable, ARM, EABI5`
+
+### Installation on Target Systems
+
+After building the architecture-specific package:
+
+1. Transfer the `.deb` file to your target system
+2. Install using `dpkg`:
+   ```bash
+   sudo dpkg -i apt-golang-s3_1_arm64.deb
+   ```
+
+For Raspberry Pi users, make sure to build for the correct architecture:
+- Raspberry Pi 4 and newer: use `arm64`
+- Raspberry Pi 3 and older: use `arm` (armhf)
+
 ## Installing in production
 
 The `apt-golang-s3` binary is an executable. To install it copy it to
